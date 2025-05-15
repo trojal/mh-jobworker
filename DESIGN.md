@@ -44,9 +44,9 @@ type JobManager interface {
 - `os/exec` will be used to start processes.
 - `StartJob` will:
   1. create a new `Job`
-  2. create a new cgroup for the job
+  2. create a new cgroup `jobworker.slice/job-<uuid>.scope` for the job
   3. apply the specified resource limits (CPU, memory, disk I/O)
-  4. start the process in its own cgroup `jobworker.slice/job-<uuid>.scope` by setting the `CgroupFD` `SysProcAttr`
+  4. start the process in its own cgroup by setting the `CgroupFD` `SysProcAttr`
   5. manage its output streams
 - Each job will have:
   - A dedicated directory in `/tmp/jobworker/<job_id>/`
