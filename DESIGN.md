@@ -22,7 +22,6 @@ The job worker library provides the core functionality for managing jobs:
 type Job struct {
     ID            string
     cmd           *exec.Cmd
-    pgid          int
     status        JobStatus
     mu            sync.Mutex
     dataAvailable *sync.Cond
@@ -43,8 +42,12 @@ type JobManager interface {
 ##### StartJob
 
 - `os/exec` will be used to start processes.
-- `StartJob` will create a new `Job`, start the process in a process group (pgid), and manage its output streams.
-- `StartJob` will create a new cgroup for each job, apply the specified resource limits (CPU, memory, disk I/O), and add the process to its own cgroup `jobworker.slice/job-<uuid>.scope`
+- `StartJob` will:
+  1. create a new `Job`
+  2. create a new cgroup for the job
+  3. apply the specified resource limits (CPU, memory, disk I/O)
+  4. start the process in its own cgroup `jobworker.slice/job-<uuid>.scope` by setting the `CgroupFD` `SysProcAttr`
+  5. manage its output streams
 - Each job will have:
   - A dedicated directory in `/tmp/jobworker/<job_id>/`
   - A single output file containing both stdout and stderr
@@ -95,11 +98,8 @@ type JobManager interface {
 
 ##### StopJob
 
-- `StopJob` will terminate all processes in the job's cgroup `jobworker.slice/job-<uuid>.scope` to ensure child processes are terminated.
-- `StopJob` will also send SIGKILL to the process group as a backup mechanism.
-- This approach ensures reliable process termination while keeping implementation simple.
+- `StopJob` will send SIGKILL to all processes in the job's cgroup `jobworker.slice/job-<uuid>.scope` to ensure child processes are terminated.
 - See Trade-offs #9 for future improvements to add graceful shutdown.
-- See Trade-offs #11 for future improvements to prevent process escape during startup.
 
 ### 2. gRPC API Server
 
@@ -225,11 +225,7 @@ Focus on testing critical components:
 - Current: Single file for combined stdout and stderr
 - Future: Separate stdout and stderr streams, timestamps
 
-11. **Resource Allocation**
-- Current: Start process then add it to cgroup
-- Future: Use clone3 to start the process in a cgroup hierarchy, to ensure process and children are always in cgroup
-
-12. **Cgroups Library**
+11. **Cgroups Library**
 - Current: No shared code used
 - Future: Use a library or external code for managing cgroups (ie. [containerd/cgroups](https://github.com/containerd/cgroups))
 
