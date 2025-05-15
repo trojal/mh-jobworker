@@ -20,9 +20,14 @@ The job worker library provides the core functionality for managing jobs:
 
 ```go
 type Job struct {
-    ID        string
-    cmd       *exec.Cmd
-    pgid      int
+    ID            string
+    cmd           *exec.Cmd
+    pgid          int
+    status        JobStatus
+    mu            sync.Mutex
+    dataAvailable *sync.Cond
+    hasExited     bool
+    output        JobOutput
 }
 
 type JobManager interface {
@@ -38,7 +43,6 @@ type JobManager interface {
 ##### StartJob
 
 - `os/exec` will be used to start processes.
-- To capture output, `io.Pipe` will be used to create pipes for stdout and stderr, allowing non-blocking reads.
 - `StartJob` will create a new `Job`, start the process in a process group (pgid), and manage its output streams.
 - `StartJob` will create a new cgroup for each job, apply the specified resource limits (CPU, memory, disk I/O), and add the process to its own cgroup `jobworker.slice/job-<uuid>.scope`
 - Each job will have:
@@ -66,10 +70,13 @@ type JobManager interface {
   2. Start reading from the beginning
   3. Continue reading as new output arrives
   4. Multiple readers can concurrently read from the file.
+  5. If we reach EOF, we terminate if the process is terminated.
+  6. If we reach EOF and the process is not terminated, we use job.dataAvailable (`sync.Cond`) to wait until the Job broadcasts that there has been more data written.
   ```go
   type OutputReader struct {
       file *os.File
       pos  int64
+      job  *Job // Reference to the job to check status
   }
   ```
 
@@ -161,8 +168,8 @@ A simple authorization scheme will be implemented. The client's certificate will
 
 ### cgroups Implementation
 
-- Use cgroups v2 for resource limits.
-- Default limits per job will be set in a configuration file and the same limits will be used for all jobs.
+- Use cgroups v2 for resource limits for `cpu.max`, `memory.high`, and `io.max`.
+- Default limits per job will be hardcoded and the same limits will be used for all jobs.
 
 ## Testing Strategy
 
@@ -216,7 +223,7 @@ Focus on testing critical components:
 
 11. **Resource Allocation**
 - Current: Start process then add it to cgroup
-- Future: Use clone3 to start the process in a cgroup hierarchy
+- Future: Use clone3 to start the process in a cgroup hierarchy, to ensure process is always in cgroup
 
 12. **Cgroups Library**
 - Current: No shared code used
