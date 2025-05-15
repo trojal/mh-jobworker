@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package jobworker.v1;
+
+import "google/rpc/status.proto";
+
+// JobWorker service provides an API to run arbitrary Linux processes.
+service JobWorker {
+    rpc StartJob(StartJobRequest) returns (StartJobResponse);
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
+    rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+    rpc StreamOutput(StreamOutputRequest) returns (stream StreamOutputResponse);
+}
+
+message StartJobRequest {
+    string command = 1;
+    repeated string args = 2;
+}
+
+message StartJobResponse {
+    string job_id = 1;
+    google.rpc.Status status = 2;
+}
+
+message StopJobRequest {
+    string job_id = 1;
+}
+
+message StopJobResponse {
+    enum StopStatus {
+        STOP_STATUS_UNKNOWN = 0;
+        STOP_STATUS_STOPPING = 1;    // Stop request received, process termination in progress
+        STOP_STATUS_COMPLETED = 2;   // Process successfully terminated
+        STOP_STATUS_NOT_FOUND = 3;   // No job found with given ID
+    }
+    StopStatus stop_status = 1;
+    google.rpc.Status status = 2;
+}
+
+message GetJobStatusRequest {
+    string job_id = 1;
+}
+
+message GetJobStatusResponse {
+    enum JobStatus {
+        STATUS_UNKNOWN = 0;
+        STATUS_RUNNING = 1;
+        STATUS_COMPLETED = 2;
+        STATUS_FAILED = 3;
+        STATUS_STOPPED = 4;
+    }
+    JobStatus job_status = 1;
+    int32 exit_code = 2;
+    google.rpc.Status status = 3;
+}
+
+message StreamOutputRequest {
+    string job_id = 1;
+}
+
+message StreamOutputResponse {
+    bytes output = 1;
+    google.rpc.Status status = 2;
+}
