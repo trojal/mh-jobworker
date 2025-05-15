@@ -106,33 +106,30 @@ The CLI provides a simple interface to interact with the service:
 
 ```bash
 # Start a job
-$ jobworker start "sleep 100"
+$ jobworker-cli start "sleep 100"
 Job ID: c06eede4-27e1-48e6-9df5-17becdd9b385
 
 # Get job status
-$ jobworker status "c06eede4-27e1-48e6-9df5-17becdd9b385"
+$ jobworker-cli status "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Status: RUNNING
-Started: 2025-05-14T17:55:30Z
 Exit Code: -
 
 # Stream job output
-$ jobworker stream "c06eede4-27e1-48e6-9df5-17becdd9b385"
+$ jobworker-cli stream "c06eede4-27e1-48e6-9df5-17becdd9b385"
 [2025-05-14T17:55:30Z] Starting job...
 [2025-05-14T17:55:31Z] Processing...
 
 # Stop a job
-$ jobworker stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
+$ jobworker-cli stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Job stop requested
 
 # Try to stop a non-existent job
-$ jobworker stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
+$ jobworker-cli stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Error: Job not found
 
 # Get status after stopping
-$ jobworker status "c06eede4-27e1-48e6-9df5-17becdd9b385"
+$ jobworker-cli status "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Status: STOPPED
-Started: 2025-05-14T17:55:30Z
-Ended: 2025-05-14T17:55:35Z
 Exit Code: 137
 ```
 
@@ -153,12 +150,12 @@ The CLI will:
 
 A simple authorization scheme will be implemented. The client's certificate will be inspected to extract an identifier (e.g., CN). A hardcoded map will associate identifiers with API access.
 - Hardcoded authorization for prototype:
+
 | Identifier | Access                                     |
-| ------------------------------------------------------- |
+| ---------- | ------------------------------------------ |
 | Alice      | start/stop/stream/status (ie. full access) |
 | Bob        | stream/status (ie. read-only)              |
 | Carol      | no access                                  |
-| ------------------------------------------------------- |
 
 ## Resource Management
 
