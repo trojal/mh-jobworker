@@ -95,7 +95,11 @@ type JobManager interface {
 
 ##### StopJob
 
-- `StopJob` will use `os.exec/Process.Kill` to terminate the process group, to ensure the entire process tree is terminated.
+- `StopJob` will terminate all processes in the job's cgroup `jobworker.slice/job-<uuid>.scope` to ensure child processes are terminated.
+- `StopJob` will also send SIGKILL to the process group as a backup mechanism.
+- This approach ensures reliable process termination while keeping implementation simple.
+- See Trade-offs #9 for future improvements to add graceful shutdown.
+- See Trade-offs #11 for future improvements to prevent process escape during startup.
 
 ### 2. gRPC API Server
 
@@ -223,7 +227,7 @@ Focus on testing critical components:
 
 11. **Resource Allocation**
 - Current: Start process then add it to cgroup
-- Future: Use clone3 to start the process in a cgroup hierarchy, to ensure process is always in cgroup
+- Future: Use clone3 to start the process in a cgroup hierarchy, to ensure process and children are always in cgroup
 
 12. **Cgroups Library**
 - Current: No shared code used
