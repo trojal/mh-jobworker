@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package jobworker.v1;
 
-import "google/rpc/status.proto";
-
 // JobWorker service provides an API to run arbitrary Linux processes.
 service JobWorker {
     rpc StartJob(StartJobRequest) returns (StartJobResponse);
@@ -19,7 +17,6 @@ message StartJobRequest {
 
 message StartJobResponse {
     string job_id = 1;
-    google.rpc.Status status = 2;
 }
 
 message StopJobRequest {
@@ -34,7 +31,6 @@ message StopJobResponse {
         STOP_STATUS_NOT_FOUND = 3;   // No job found with given ID
     }
     StopStatus stop_status = 1;
-    google.rpc.Status status = 2;
 }
 
 message GetJobStatusRequest {
@@ -51,7 +47,6 @@ message GetJobStatusResponse {
     }
     JobStatus job_status = 1;
     int32 exit_code = 2;
-    google.rpc.Status status = 3;
 }
 
 message StreamOutputRequest {
@@ -60,5 +55,4 @@ message StreamOutputRequest {
 
 message StreamOutputResponse {
     bytes output = 1;
-    google.rpc.Status status = 2;
 }
