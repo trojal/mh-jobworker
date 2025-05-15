@@ -26,7 +26,7 @@ type Job struct {
     mu            sync.Mutex
     dataAvailable *sync.Cond
     hasExited     bool
-    output        JobOutput
+    output        *JobOutput
 }
 
 type JobManager interface {
