@@ -23,10 +23,7 @@ message StopJobRequest {
     string job_id = 1;
 }
 
-message StopJobResponse {
-    JobStatus target_status = 1;
-    JobStatus current_status = 2;
-}
+message StopJobResponse {}
 
 message GetJobStatusRequest {
     string job_id = 1;
