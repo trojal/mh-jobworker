@@ -225,8 +225,8 @@ Focus on testing critical components:
 - Future: Configuration system with environment variables and config files
 
 3. **Resource Limits**
-- Current: Fixed limits per job
-- Future: Configurable limits based on user roles
+- Current: Hardcoded per-server job limits (not shared pool)
+- Future: Configurable job limits
 
 4. **High Availability**
 - Current: Single instance
