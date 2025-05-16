@@ -76,8 +76,7 @@ type JobOutput struct {
          - NOTE: A channel was considered here, but `sync.Cond` Broadcast is efficient with no readers and simple with multiple waiting readers
   6. start a goroutine that:
      - Waits for process completion
-     - Sets `pids.max` to 0 to prevent new processes
-     - Waits briefly for any stragglers
+     - Sets `cgroup.kill` to 1 to clean up stray processes
      - Attempts to remove the cgroup with no retry, for simplicity
      - Removes the `Job` from the map of jobs in memory
 - Each job will have:
@@ -108,7 +107,7 @@ type JobOutput struct {
 
 ##### GetJobStatus
 
-- A `Job` struct will track the state of jobs. A map of jobs will be stored in memory, using unique job ID as key.
+- A `Job` struct will track the state of jobs. A map of jobs will be stored in memory, using unique job ID (UUID) as key.
   ```proto
     enum JobStatus {
         STATUS_UNKNOWN = 0;
@@ -122,11 +121,9 @@ type JobOutput struct {
 ##### StopJob
 
 - `StopJob` will:
-  1. set `pids.max` to 0 in the job's cgroup to prevent new processes
-  2. send SIGKILL to all processes in the cgroup
-  3. wait briefly for processes to terminate
-  4. attempt once to remove the cgroup with no retry, for simplicity
-  5. remove the `Job` from the map of jobs in memory
+  1. set `cgroup.kill` to 1 in the job's cgroup to kill all processes from that job
+  2. attempt once to remove the cgroup with no retry, for simplicity
+  3. remove the `Job` from the map of jobs in memory
 
 ### 2. gRPC API Server
 
@@ -212,7 +209,7 @@ Subject: CN=Alice@jobworker
 
 - Use cgroups v2 for resource limits for `cpu.max`, `memory.high`, and `io.weight`.
 - Default limits per job will be hardcoded and the same limits will be used for all jobs.
-- Use `pids.max` during job cleanup to prevent child processes spawning.
+- Use `cgroup.kill` during job cleanup to clean up any child processes.
 
 ## Testing Strategy
 
