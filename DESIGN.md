@@ -144,8 +144,16 @@ The CLI provides a simple interface to interact with the service:
 
 ```bash
 # Start a job
-$ jobworker-cli start "sleep 100"
+$ jobworker-cli start sleep 100
 Job ID: c06eede4-27e1-48e6-9df5-17becdd9b385
+
+# Send an argument with contained space
+$ jobworker-cli start touch "my file.txt"
+Job ID: abb0f888-a17f-4e1c-a95e-97eb22b1349e
+
+# Run a command with multiple arguments
+$ jobworker-cli start ls -l /tmp
+Job ID: 92462ee4-137b-4467-baac-62991f367d55
 
 # Get job status
 $ jobworker-cli status "c06eede4-27e1-48e6-9df5-17becdd9b385"
