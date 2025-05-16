@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package jobworker.v1;
+
+// JobWorker service provides an API to run arbitrary Linux processes.
+service JobWorker {
+    rpc StartJob(StartJobRequest) returns (StartJobResponse);
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
+    rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+    rpc StreamOutput(StreamOutputRequest) returns (stream StreamOutputResponse);
+}
+
+message StartJobRequest {
+    string command = 1;
+    repeated string args = 2;
+}
+
+message StartJobResponse {
+    string job_id = 1;
+}
+
+message StopJobRequest {
+    string job_id = 1;
+}
+
+message StopJobResponse {}
+
+message GetJobStatusRequest {
+    string job_id = 1;
+}
+
+message GetJobStatusResponse {
+    enum JobStatus {
+        STATUS_UNKNOWN = 0;
+        STATUS_RUNNING = 1;
+        STATUS_COMPLETED = 2;
+        STATUS_FAILED = 3;
+        STATUS_STOPPED = 4;
+    }
+    JobStatus job_status = 1;
+    optional int32 exit_code = 2;
+}
+
+message StreamOutputRequest {
+    string job_id = 1;
+}
+
+message StreamOutputResponse {
+    bytes output = 1;
+}
