@@ -185,7 +185,11 @@ The CLI will:
 
 ### Authorization
 
-A simple authorization scheme will be implemented. The client's certificate will be inspected to extract an identifier (e.g., CN). A hardcoded map will associate identifiers with API access.
+A simple authorization scheme will be implemented. The client's certificate will be inspected to extract the CN identifier. A hardcoded map will associate identifiers with API access.
+```
+# Client Certificate
+Subject: CN=Alice@jobworker
+```
 - Hardcoded authorization for prototype:
 
 | Identifier | Access                                     |
