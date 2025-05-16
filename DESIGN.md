@@ -242,7 +242,7 @@ Focus on testing critical components:
 
 7. **Input Validation**
 - Current: No input validation is performed
-- Future: Validate input for errors / abuse
+- Future: Validate input for errors / abuse (path traversal, command whitelist, maximum input length)
 
 8. **Authorization**
 - Current: Hardcoded auth based on client identifiers
