@@ -23,10 +23,22 @@ type Job struct {
     ID            string
     cmd           *exec.Cmd
     status        JobStatus
+    hasExited     bool
+    
+    // Synchronization
     mu            sync.Mutex
     dataAvailable *sync.Cond
-    hasExited     bool
+    
+    // Job output
     output        *JobOutput
+    stdoutPipe    struct {
+        reader *io.PipeReader
+        writer *io.PipeWriter
+    }
+    stderrPipe    struct {
+        reader *io.PipeReader
+        writer *io.PipeWriter
+    }
 }
 
 type JobManager interface {
@@ -34,6 +46,13 @@ type JobManager interface {
     StopJob(ctx context.Context, jobID string) (StopStatus, error)
     GetJobStatus(ctx context.Context, jobID string) (*Job, error)
     StreamOutput(ctx context.Context, jobID string) (<-chan []byte, error)
+}
+
+type JobOutput struct {
+    mu      sync.RWMutex
+    file    *os.File
+    baseDir string
+    jobID   string
 }
 ```
 
@@ -47,20 +66,23 @@ type JobManager interface {
   2. create a new cgroup `jobworker.slice/job-<uuid>.scope` for the job
   3. apply the specified resource limits (CPU, memory, disk I/O)
   4. start the process in its own cgroup by setting the `CgroupFD` `SysProcAttr`
-  5. manage its output streams
+  5. manage its output streams by:
+     - Creating output file in append mode
+     - Creating pipes for stdout and stderr
+     - Starting a goroutine that:
+       - Reads from pipes
+       - Writes to file
+       - Broadcasts on `sync.Cond` `dataAvailable` after each write
+         - NOTE: A channel was considered here, but `sync.Cond` Broadcast is efficient with no readers and simple with multiple waiting readers
+  6. start a goroutine that:
+     - Waits for process completion
+     - Sets `pids.max` to 0 to prevent new processes
+     - Waits briefly for any stragglers
+     - Attempts to remove the cgroup with no retry, for simplicity
+     - Removes the `Job` from the map of jobs in memory
 - Each job will have:
   - A dedicated directory in `/tmp/jobworker/<job_id>/`
   - A single output file containing both stdout and stderr
-  - File opened in append mode for writing
-- Output streaming will use file-based storage:
-  ```go
-  type JobOutput struct {
-      mu      sync.RWMutex
-      file    *os.File
-      baseDir string
-      jobID   string
-  }
-  ```
 - The output file will:
   - Be created when the job starts
   - Grow as output is written
@@ -72,9 +94,10 @@ type JobManager interface {
   1. Open output file in read-only mode
   2. Start reading from the beginning
   3. Continue reading as new output arrives
-  4. Multiple readers can concurrently read from the file.
-  5. If we reach EOF, we terminate if the process is terminated.
-  6. If we reach EOF and the process is not terminated, we use job.dataAvailable (`sync.Cond`) to wait until the Job broadcasts that there has been more data written.
+  4. Multiple readers can concurrently read from the file
+  5. If we reach EOF, we terminate if the process is terminated
+  6. If we reach EOF and the process is not terminated, we wait on `sync.Cond` `job.dataAvailable`
+  7. When new data arrives, we read from the file from our last position
   ```go
   type OutputReader struct {
       file *os.File
@@ -98,8 +121,12 @@ type JobManager interface {
 
 ##### StopJob
 
-- `StopJob` will send SIGKILL to all processes in the job's cgroup `jobworker.slice/job-<uuid>.scope` to ensure child processes are terminated.
-- See Trade-offs #9 for future improvements to add graceful shutdown.
+- `StopJob` will:
+  1. set `pids.max` to 0 in the job's cgroup to prevent new processes
+  2. send SIGKILL to all processes in the cgroup
+  3. wait briefly for processes to terminate
+  4. attempt once to remove the cgroup with no retry, for simplicity
+  5. remove the `Job` from the map of jobs in memory
 
 ### 2. gRPC API Server
 
@@ -125,10 +152,9 @@ $ jobworker-cli status "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Status: RUNNING
 Exit Code: -
 
-# Stream job output
+# Stream job output (no output from "sleep 100")
 $ jobworker-cli stream "c06eede4-27e1-48e6-9df5-17becdd9b385"
-[2025-05-14T17:55:30Z] Starting job...
-[2025-05-14T17:55:31Z] Processing...
+
 
 # Stop a job
 $ jobworker-cli stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
@@ -172,8 +198,9 @@ A simple authorization scheme will be implemented. The client's certificate will
 
 ### cgroups Implementation
 
-- Use cgroups v2 for resource limits for `cpu.max`, `memory.high`, and `io.max`.
+- Use cgroups v2 for resource limits for `cpu.max`, `memory.high`, and `io.weight`.
 - Default limits per job will be hardcoded and the same limits will be used for all jobs.
+- Use `pids.max` during job cleanup to prevent child processes spawning.
 
 ## Testing Strategy
 
@@ -228,6 +255,14 @@ Focus on testing critical components:
 11. **Cgroups Library**
 - Current: No shared code used
 - Future: Use a library or external code for managing cgroups (ie. [containerd/cgroups](https://github.com/containerd/cgroups))
+
+12. **Output Streaming**
+- Current: Broadcast to waiting readers on every write
+- Future: Batch notifications, add backpressure, use per-reader channels
+
+13. **Job Management**
+- Current: Two goroutines per job for output and lifecycle
+- Future: Worker pool for output processing, more sophisticated process management
 
 ## Building and Running
 

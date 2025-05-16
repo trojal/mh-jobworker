@@ -24,13 +24,8 @@ message StopJobRequest {
 }
 
 message StopJobResponse {
-    enum StopStatus {
-        STOP_STATUS_UNKNOWN = 0;
-        STOP_STATUS_STOPPING = 1;    // Stop request received, process termination in progress
-        STOP_STATUS_COMPLETED = 2;   // Process successfully terminated
-        STOP_STATUS_NOT_FOUND = 3;   // No job found with given ID
-    }
-    StopStatus stop_status = 1;
+    JobStatus target_status = 1;
+    JobStatus current_status = 2;
 }
 
 message GetJobStatusRequest {
@@ -46,7 +41,7 @@ message GetJobStatusResponse {
         STATUS_STOPPED = 4;
     }
     JobStatus job_status = 1;
-    int32 exit_code = 2;
+    optional int32 exit_code = 2;
 }
 
 message StreamOutputRequest {
