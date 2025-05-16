@@ -31,14 +31,6 @@ type Job struct {
     
     // Job output
     output        *JobOutput
-    stdoutPipe    struct {
-        reader *io.PipeReader
-        writer *io.PipeWriter
-    }
-    stderrPipe    struct {
-        reader *io.PipeReader
-        writer *io.PipeWriter
-    }
 }
 
 type JobManager interface {
