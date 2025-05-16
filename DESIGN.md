@@ -68,12 +68,10 @@ type JobOutput struct {
   4. start the process in its own cgroup by setting the `CgroupFD` `SysProcAttr`
   5. manage its output streams by:
      - Creating output file in append mode
-     - Creating pipes for stdout and stderr
-     - Starting a goroutine that:
-       - Reads from pipes
-       - Writes to file
+     - Creating a custom `io.Writer` that:
+       - Writes directly to the file
        - Broadcasts on `sync.Cond` `dataAvailable` after each write
-         - NOTE: A channel was considered here, but `sync.Cond` Broadcast is efficient with no readers and simple with multiple waiting readers
+     - Setting the custom writer as both stdout and stderr for the process
   6. start a goroutine that:
      - Waits for process completion
      - Sets `cgroup.kill` to 1 to clean up stray processes
