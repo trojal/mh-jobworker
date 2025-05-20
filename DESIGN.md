@@ -68,7 +68,6 @@ type JobOutput struct {
      - Waits for process completion
      - Sets `cgroup.kill` to 1 to clean up stray processes
      - Attempts to remove the cgroup with no retry, for simplicity
-     - Removes the `Job` from the map of jobs in memory
 - Each job will have:
   - A dedicated directory in `/tmp/jobworker/<job_id>/`
   - A single output file containing both stdout and stderr
@@ -113,7 +112,7 @@ type JobOutput struct {
 - `StopJob` will:
   1. set `cgroup.kill` to 1 in the job's cgroup to kill all processes from that job
   2. attempt once to remove the cgroup with no retry, for simplicity
-  3. remove the `Job` from the map of jobs in memory
+  3. Set the `JobStatus` to STOPPED.
 
 ### 2. gRPC API Server
 
@@ -155,8 +154,12 @@ $ jobworker-cli stream "c06eede4-27e1-48e6-9df5-17becdd9b385"
 $ jobworker-cli stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
 Job stop requested
 
-# Try to stop a non-existent job
+# Stop a job a second time
 $ jobworker-cli stop "c06eede4-27e1-48e6-9df5-17becdd9b385"
+Job stop requested
+
+# Try to stop a non-existent job
+$ jobworker-cli stop "be650871-f6e2-4a80-9b3d-9710f33cc628"
 Error: Job not found
 
 # Get status after stopping
@@ -301,7 +304,8 @@ Start the server:
 
 #### Requirements
 
-NOTE: The server expects cgroupsv2 to be available on the system and will return an error if only cgroupsv1 is available.
+NOTE: The server expects:
+* cgroupsv2 to be available on the system and will return an error if only cgroupsv1 is available
 
 ### Running the CLI
 
