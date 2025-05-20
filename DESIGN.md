@@ -35,7 +35,7 @@ type Job struct {
 
 type JobManager interface {
     StartJob(ctx context.Context, cmd string, args []string) (*Job, error)
-    StopJob(ctx context.Context, jobID string) (StopStatus, error)
+    StopJob(ctx context.Context, jobID string) (error)
     GetJobStatus(ctx context.Context, jobID string) (*Job, error)
     StreamOutput(ctx context.Context, jobID string) (<-chan []byte, error)
 }
