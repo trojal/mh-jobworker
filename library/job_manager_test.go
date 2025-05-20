@@ -9,6 +9,52 @@ import (
 	"time"
 )
 
+// Test artifacts are created under /tmp/jobworker/ with unique job IDs.
+// Each test job creates a directory structure like:
+//   /tmp/jobworker/<job-id>/output.log
+// These files are not automatically cleaned up between test runs.
+
+func checkCgroupLimit(t *testing.T, cgroupPath, limitFile, expectedValue string) {
+	content, err := os.ReadFile(filepath.Join(cgroupPath, limitFile))
+	if err != nil {
+		t.Errorf("Failed to read %s: %v", limitFile, err)
+		return
+	}
+
+	// Trim any whitespace and newlines from both values
+	actual := strings.TrimSpace(string(content))
+	expected := strings.TrimSpace(expectedValue)
+
+	if actual != expected {
+		t.Errorf("%s = %q, want %q", limitFile, actual, expected)
+	}
+}
+
+func TestNewJobManager(t *testing.T) {
+	// Test that NewJobManager returns a non-nil JobManager
+	manager := NewJobManager()
+	if manager == nil {
+		t.Error("NewJobManager returned nil")
+	}
+
+	// Test that the parent cgroup was created
+	if _, err := os.Stat(parentCgroupPath); os.IsNotExist(err) {
+		t.Errorf("Parent cgroup directory %s was not created", parentCgroupPath)
+	}
+
+	// Test that the required controllers were enabled
+	controllers, err := os.ReadFile(filepath.Join(parentCgroupPath, cgroupSubtreeControl))
+	if err != nil {
+		t.Errorf("Failed to read cgroup.subtree_control: %v", err)
+	}
+
+	if !strings.Contains(string(controllers), "cpu") ||
+		!strings.Contains(string(controllers), "memory") ||
+		!strings.Contains(string(controllers), "io") {
+		t.Error("Required controllers (cpu, memory, io) were not enabled")
+	}
+}
+
 func TestJobManager_StartJob(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -113,47 +159,6 @@ func TestJobManager_StopJob(t *testing.T) {
 	cgroupPath := filepath.Join("/sys/fs/cgroup/jobworker.slice", "job-"+job.ID+".scope")
 	if _, err := os.Stat(cgroupPath); !os.IsNotExist(err) {
 		t.Errorf("cgroup directory %s still exists", cgroupPath)
-	}
-}
-
-func checkCgroupLimit(t *testing.T, cgroupPath, limitFile, expectedValue string) {
-	content, err := os.ReadFile(filepath.Join(cgroupPath, limitFile))
-	if err != nil {
-		t.Errorf("Failed to read %s: %v", limitFile, err)
-		return
-	}
-
-	// Trim any whitespace and newlines from both values
-	actual := strings.TrimSpace(string(content))
-	expected := strings.TrimSpace(expectedValue)
-
-	if actual != expected {
-		t.Errorf("%s = %q, want %q", limitFile, actual, expected)
-	}
-}
-
-func TestNewJobManager(t *testing.T) {
-	// Test that NewJobManager returns a non-nil JobManager
-	manager := NewJobManager()
-	if manager == nil {
-		t.Error("NewJobManager returned nil")
-	}
-
-	// Test that the parent cgroup was created
-	if _, err := os.Stat(parentCgroupPath); os.IsNotExist(err) {
-		t.Errorf("Parent cgroup directory %s was not created", parentCgroupPath)
-	}
-
-	// Test that the required controllers were enabled
-	controllers, err := os.ReadFile(filepath.Join(parentCgroupPath, cgroupSubtreeControl))
-	if err != nil {
-		t.Errorf("Failed to read cgroup.subtree_control: %v", err)
-	}
-
-	if !strings.Contains(string(controllers), "cpu") ||
-		!strings.Contains(string(controllers), "memory") ||
-		!strings.Contains(string(controllers), "io") {
-		t.Error("Required controllers (cpu, memory, io) were not enabled")
 	}
 }
 
